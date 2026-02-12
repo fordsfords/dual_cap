@@ -165,4 +165,65 @@ else
   echo "FYI: tshark not found; skipping cap_cmd test."
 fi
 
+# Fourth test - mon_pattern: non-matching lines should not trigger.
+
+cat >listener.cfg <<__EOF__
+listen_port=9877
+mon_file=logfile1.log
+mon_pattern=*ERROR*
+__EOF__
+
+cat >initiator.cfg <<__EOF__
+init_ip=127.0.0.1
+init_port=9877
+mon_file=logfile2.log
+mon_pattern=*ERROR*
+__EOF__
+
+start_caps
+
+# Write a non-matching line.  Should NOT trigger.
+echo "INFO: all is well" >> logfile1.log
+
+sleep 1
+
+# Both should still be running.
+if kill -0 $LISTENER_PID 2>/dev/null; then :
+else
+  echo "FAIL: listener triggered on non-matching line."
+  FAIL=1
+fi
+
+if kill -0 $INITIATOR_PID 2>/dev/null; then :
+else
+  echo "FAIL: initiator triggered on non-matching line."
+  FAIL=1
+fi
+
+# Now write a matching line.  Should trigger.
+echo "ERROR: something broke" >> logfile1.log
+
+sleep 0.5
+
+check_exits
+
+# Fifth test - mon_pattern: trigger on initiator side.
+
+start_caps
+
+echo "INFO: nothing to see" >> logfile2.log
+sleep 1
+
+if kill -0 $LISTENER_PID 2>/dev/null; then :
+else
+  echo "FAIL: listener triggered on non-matching line (test 5)."
+  FAIL=1
+fi
+
+echo "ERROR: initiator saw it" >> logfile2.log
+
+sleep 0.5
+
+check_exits
+
 exit $FAIL

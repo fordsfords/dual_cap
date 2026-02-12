@@ -9,6 +9,37 @@
   } \
 } while (0)
 
+
+/* glob_match - match a string against a simplified glob pattern.
+ * Supports '*' (zero or more characters) and '?' (exactly one character).
+ * Returns 1 on match, 0 on no match. */
+int glob_match(const char *pattern, const char *str) {
+  while (*pattern) {
+    if (*pattern == '*') {
+      /* Skip consecutive stars. */
+      while (*pattern == '*') { pattern++; }
+      /* Trailing star matches everything. */
+      if (*pattern == '\0') { return 1; }
+      /* Try matching the rest of the pattern at every position. */
+      while (*str) {
+        if (glob_match(pattern, str)) { return 1; }
+        str++;
+      }
+      return glob_match(pattern, str);  /* Both exhausted? */
+    } else if (*pattern == '?') {
+      if (*str == '\0') { return 0; }
+      pattern++;
+      str++;
+    } else {
+      if (*str != *pattern) { return 0; }
+      pattern++;
+      str++;
+    }
+  }
+  return *str == '\0';
+}  /* glob_match */
+
+
 /* Config globals. */
 struct in_addr cfg_init_ip;
 int cfg_init_port = 0;
@@ -16,6 +47,7 @@ int cfg_listen_port = 0;
 char *cfg_mon_file = NULL;
 char *cfg_cap_cmd = NULL;
 int cfg_cap_linger_ms = 0;
+char *cfg_mon_pattern = NULL;
 
 /* Initialized by main, used by threads. */
 plat_sock_t peer_sock;
@@ -66,6 +98,8 @@ void cfg_parse(char *cfg_file_name) {
       cfg_cap_cmd = strdup(val);  E(cfg_cap_cmd == NULL);
     } else if (strcmp(key, "cap_linger_ms") == 0) {
       cfg_cap_linger_ms = atoi(val);  E(cfg_cap_linger_ms < 0);
+    } else if (strcmp(key, "mon_pattern") == 0) {
+      cfg_mon_pattern = strdup(val);  E(cfg_mon_pattern == NULL);
     } else {
       fprintf(stderr, "ERROR: unknown key '%s'\n", key);
       exit(1);
@@ -129,11 +163,17 @@ FILE *mon_open(void) {
 
 void *file_mon_thread(void *arg) {
   char line[512];
+  char *nl;
   (void)arg;
 
   while (!exiting) {
     if (fgets(line, sizeof(line), mon_fp) != NULL) {
-      exiting = 1;
+      /* Strip trailing newline for pattern matching. */
+      nl = strchr(line, '\n');
+      if (nl) { *nl = '\0'; }
+      if (cfg_mon_pattern == NULL || glob_match(cfg_mon_pattern, line)) {
+        exiting = 1;
+      }
     } else {
       clearerr(mon_fp);
       fseek(mon_fp, 0, SEEK_CUR);  /* Force runtime to recheck file size (Windows). */
@@ -213,5 +253,6 @@ int main(int argc, char **argv) {
 
   free(cfg_cap_cmd);
   free(cfg_mon_file);
+  free(cfg_mon_pattern);
   return 0;
 }  /* main */
