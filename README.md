@@ -2,8 +2,9 @@
 
 Coordinate two instances of dual_cap running on different hosts so that
 both exit at the same time, triggered by new output appearing in a
-monitored log file on either host. Packet capture integration is planned
-but not yet implemented.
+monitored log file on either host.  Each instance can optionally run a
+packet capture command (e.g. `tshark`) in the background, which is
+stopped shortly after the trigger fires.
 
 
 ## Overview
@@ -44,12 +45,18 @@ Unknown keys are rejected.
 | `init_port` | integer | Remote listener port (initiator only) |
 | `listen_port` | integer | Port to listen on (listener only) |
 | `mon_file` | file path | Log file to monitor for new output |
+| `cap_cmd` | command line | Capture command to run in background (optional) |
+| `cap_linger_ms` | integer | Milliseconds to keep capturing after trigger (optional, default 0) |
 
 Rules:
 
 - Exactly one of `init_ip` or `listen_port` must be present.
 - `init_port` must be present if and only if `init_ip` is present.
 - `mon_file` is always required.
+- `cap_cmd` is optional. If present, the command is launched before the
+  peer connection is established and killed after the trigger fires
+  (plus any `cap_linger_ms` delay).
+- `cap_linger_ms` is optional. Only meaningful if `cap_cmd` is present.
 
 ### Example
 
@@ -57,12 +64,16 @@ Listener config (`listener.cfg`):
 
     listen_port=9877
     mon_file=/var/log/myapp.log
+    cap_cmd=tshark -i eth0 -w /tmp/caps/listener.pcapng -b filesize:10240 -b files:5 -q
+    cap_linger_ms=1000
 
 Initiator config (`initiator.cfg`):
 
     init_ip=192.168.1.10
     init_port=9877
     mon_file=/var/log/myapp.log
+    cap_cmd=tshark -i eth0 -w /tmp/caps/initiator.pcapng -b filesize:10240 -b files:5 -q
+    cap_linger_ms=1000
 
 
 ## File Structure
@@ -103,6 +114,28 @@ concern, it should be made platform-conditional.
 could be cleaned up with a platform macro.
 
 
+## Capture Integration
+
+The `cap_cmd` config key specifies a packet capture command (typically
+`tshark` or `tcpdump`) to run in the background.  The capture starts
+before the peer connection is established so it is already running when
+application traffic begins.  After the trigger fires, the capture
+continues for `cap_linger_ms` milliseconds to catch trailing packets,
+then the capture process is killed.
+
+Recommended `tshark` options for long-running captures:
+
+- `-b filesize:<KB> -b files:<N>` creates a ring buffer of N files,
+  bounding disk usage.
+- `-q` suppresses per-packet output to stdout.
+
+**Shutdown behavior.** On Unix, the capture process group receives
+`SIGTERM`, which causes `tshark` and `dumpcap` to flush and exit
+cleanly.  On Windows, `TerminateProcess` is used (a hard kill).  With
+ring-buffer files, only the currently-writing file may be truncated;
+already-rotated files are intact on disk.
+
+
 ## Error Handling
 
 The `E()` macro is used throughout. It takes an expression that
@@ -116,7 +149,10 @@ The intent is minimal clutter, not user-friendly diagnostics.
 - `volatile int exiting` is used for cross-thread signaling. This works
   on x86/x64 but is not formally correct per the C11 memory model.
   `_Atomic int` would be the proper alternative.
-- Packet capture is not yet implemented.
+- On Windows, `TerminateProcess` is used to stop the capture command.
+  This is a hard kill; the currently-writing capture file may be
+  truncated.  Use ring-buffer mode (`-b filesize:... -b files:...`)
+  to limit exposure.
 
 
 ## Testing

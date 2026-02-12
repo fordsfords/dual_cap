@@ -8,12 +8,15 @@
 #include <ws2tcpip.h>
 typedef SOCKET plat_sock_t;
 typedef HANDLE plat_thread_t;
+typedef HANDLE plat_proc_t;
 #define PLAT_INVALID_SOCK INVALID_SOCKET
+#define PLAT_INVALID_PROC NULL
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/time.h>
+#include <sys/wait.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -21,7 +24,9 @@ typedef HANDLE plat_thread_t;
 #include <pthread.h>
 typedef int plat_sock_t;
 typedef pthread_t plat_thread_t;
+typedef pid_t plat_proc_t;
 #define PLAT_INVALID_SOCK (-1)
+#define PLAT_INVALID_PROC (-1)
 #endif
 
 #include <stdio.h>
@@ -36,5 +41,8 @@ void plat_sleep_ms(int ms);
 int plat_thread_create(plat_thread_t *thr, plat_thread_func_t func, void *arg);
 int plat_thread_join(plat_thread_t thr);
 int plat_close_sock(plat_sock_t sock);
+int plat_spawn_cmd(const char *cmd, plat_proc_t *proc);
+int plat_kill_proc(plat_proc_t proc);
+int plat_wait_proc(plat_proc_t proc);
 
 #endif  /* PLAT_H */

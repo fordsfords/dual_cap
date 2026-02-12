@@ -14,10 +14,16 @@ struct in_addr cfg_init_ip;
 int cfg_init_port = 0;
 int cfg_listen_port = 0;
 char *cfg_mon_file = NULL;
+char *cfg_cap_cmd = NULL;
+int cfg_cap_linger_ms = 0;
 
 /* Initialized by main, used by threads. */
 plat_sock_t peer_sock;
 FILE *mon_fp;
+
+/* Capture subprocess. */
+plat_proc_t cap_proc;
+int cap_running = 0;
 
 volatile int exiting = 0;
 
@@ -56,6 +62,10 @@ void cfg_parse(char *cfg_file_name) {
       has_listen_port = 1;
     } else if (strcmp(key, "mon_file") == 0) {
       cfg_mon_file = strdup(val);  E(cfg_mon_file == NULL);
+    } else if (strcmp(key, "cap_cmd") == 0) {
+      cfg_cap_cmd = strdup(val);  E(cfg_cap_cmd == NULL);
+    } else if (strcmp(key, "cap_linger_ms") == 0) {
+      cfg_cap_linger_ms = atoi(val);  E(cfg_cap_linger_ms < 0);
     } else {
       fprintf(stderr, "ERROR: unknown key '%s'\n", key);
       exit(1);
@@ -174,6 +184,13 @@ int main(int argc, char **argv) {
   E(plat_init());
   cfg_parse(argv[1]);
 
+  /* Start capture subprocess before connecting, so it is already
+   * capturing when application traffic begins. */
+  if (cfg_cap_cmd != NULL) {
+    E(plat_spawn_cmd(cfg_cap_cmd, &cap_proc));
+    cap_running = 1;
+  }
+
   /* Establish connection before opening log file, so that both
    * instances are connected before either starts monitoring. */
   peer_sock = peer_connect();
@@ -185,6 +202,16 @@ int main(int argc, char **argv) {
   plat_thread_join(file_thr);
   plat_thread_join(peer_thr);
 
+  /* Let capture run a bit longer to catch trailing packets, then stop. */
+  if (cap_running) {
+    if (cfg_cap_linger_ms > 0) {
+      plat_sleep_ms(cfg_cap_linger_ms);
+    }
+    plat_kill_proc(cap_proc);
+    plat_wait_proc(cap_proc);
+  }
+
+  free(cfg_cap_cmd);
   free(cfg_mon_file);
   return 0;
 }  /* main */

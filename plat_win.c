@@ -55,3 +55,51 @@ int plat_thread_join(plat_thread_t thr) {
 int plat_close_sock(plat_sock_t sock) {
   return closesocket(sock);
 }  /* plat_close_sock */
+
+
+int plat_spawn_cmd(const char *cmd, plat_proc_t *proc) {
+  STARTUPINFO si;
+  PROCESS_INFORMATION pi;
+  char *cmd_copy;
+
+  memset(&si, 0, sizeof(si));
+  si.cb = sizeof(si);
+  memset(&pi, 0, sizeof(pi));
+
+  /* CreateProcess may modify the command line string. */
+  cmd_copy = strdup(cmd);
+  if (cmd_copy == NULL) { return -1; }
+
+  if (!CreateProcess(NULL, cmd_copy, NULL, NULL,
+      TRUE,  /* Inherit handles (stdout, stderr). */
+      0, NULL, NULL, &si, &pi)) {
+    free(cmd_copy);
+    return -1;
+  }
+
+  free(cmd_copy);
+  CloseHandle(pi.hThread);
+  *proc = pi.hProcess;
+  return 0;
+}  /* plat_spawn_cmd */
+
+
+int plat_kill_proc(plat_proc_t proc) {
+  /* TerminateProcess is a hard kill (like SIGKILL).  Acceptable when
+   * using tshark with ring-buffer files; already-rotated files are
+   * intact and only the currently-writing file may be truncated.
+   *
+   * Note: this only kills the specified process, not children.
+   * tshark's child (dumpcap) will notice the broken pipe and exit
+   * shortly after.  If this is not reliable enough, use a Job Object
+   * to group the process tree. */
+  if (!TerminateProcess(proc, 1)) { return -1; }
+  return 0;
+}  /* plat_kill_proc */
+
+
+int plat_wait_proc(plat_proc_t proc) {
+  DWORD rc = WaitForSingleObject(proc, INFINITE);
+  CloseHandle(proc);
+  return (rc == WAIT_OBJECT_0) ? 0 : -1;
+}  /* plat_wait_proc */

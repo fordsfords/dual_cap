@@ -102,4 +102,67 @@ sleep 0.5
 
 check_exits
 
+# Third test - verify cap_cmd starts and stops.
+
+if which tshark >/dev/null 2>&1; then
+  rm -rf capdir1 capdir2
+  mkdir -p capdir1 capdir2
+  chmod 777 capdir1 capdir2
+
+  cat >listener.cfg <<__EOF__
+listen_port=9877
+mon_file=logfile1.log
+cap_cmd=tshark -i lo -w capdir1/cap.pcapng -b filesize:100 -b files:3 -q
+cap_linger_ms=500
+__EOF__
+
+  cat >initiator.cfg <<__EOF__
+init_ip=127.0.0.1
+init_port=9877
+mon_file=logfile2.log
+cap_cmd=tshark -i lo -w capdir2/cap.pcapng -b filesize:100 -b files:3 -q
+cap_linger_ms=500
+__EOF__
+
+  start_caps
+
+  # Triggering listener.
+
+  echo "test" >> logfile1.log
+
+  sleep 1
+
+  check_exits
+
+  # Verify capture files were created.
+  CAP1_COUNT=$(ls capdir1/cap*.pcapng 2>/dev/null | wc -l)
+  CAP2_COUNT=$(ls capdir2/cap*.pcapng 2>/dev/null | wc -l)
+
+  if [ "$CAP1_COUNT" -eq 0 ]; then
+    echo "FAIL: No capture files in capdir1."
+    FAIL=1
+  fi
+
+  if [ "$CAP2_COUNT" -eq 0 ]; then
+    echo "FAIL: No capture files in capdir2."
+    FAIL=1
+  fi
+
+  # Verify tshark processes are gone.
+  sleep 0.5
+  if pgrep -f "capdir1/cap.pcapng" >/dev/null 2>&1; then
+    echo "FAIL: tshark for capdir1 still running."
+    pkill -f "capdir1/cap.pcapng" 2>/dev/null
+    FAIL=1
+  fi
+
+  if pgrep -f "capdir2/cap.pcapng" >/dev/null 2>&1; then
+    echo "FAIL: tshark for capdir2 still running."
+    pkill -f "capdir2/cap.pcapng" 2>/dev/null
+    FAIL=1
+  fi
+else
+  echo "FYI: tshark not found; skipping cap_cmd test."
+fi
+
 exit $FAIL
