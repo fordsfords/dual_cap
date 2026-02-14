@@ -107,7 +107,7 @@ See [re documentation](https://github.com/fordsfords/re) for details on the regu
 Examples:
 
     mon_pattern=ERROR             matches any line containing "ERROR"
-    mon_pattern=^ERROR.*timeout   matches lines starting with "ERROR" followd by "timeout"
+    mon_pattern=^ERROR.*timeout   matches lines starting with "ERROR" followed by "timeout"
 
 ### Example Config Files
 
@@ -180,7 +180,7 @@ could be cleaned up with a platform macro.
 ## Capture Integration
 
 The `cap_cmd` config key specifies a data capture command (typically
-packat capture using `tshark` or `tcpdump`) to run in the background.
+packet capture using `tshark` or `tcpdump`) to run in the background.
 The capture starts
 before the peer connection is established so it is already running when
 application traffic begins.  After the trigger fires, the capture

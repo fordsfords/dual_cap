@@ -1,4 +1,15 @@
-/* plat_win.c - Windows platform functions for dual_cap. */
+/* plat_win.c - Windows platform functions for dual_cap.
+ * See https://github.com/fordsfords/dual_cap for documentation. */
+
+/* This work is dedicated to the public domain under CC0 1.0 Universal:
+ * http://creativecommons.org/publicdomain/zero/1.0/
+ * 
+ * To the extent possible under law, Steven Ford has waived all copyright
+ * and related or neighboring rights to this work. In other words, you can 
+ * use this code for any purpose without any restrictions.
+ * This work is published from: United States.
+ * Project home: https://github.com/fordsfords/dual_cap
+ */
 
 #include "plat.h"
 

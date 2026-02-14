@@ -15,13 +15,13 @@ start_caps() {
   if kill -0 $LISTENER_PID 2>/dev/null; then :
   else :
     echo "ERROR: listener not running."
-    FAIL=1
+    ((FAIL++))
   fi
 
   if kill -0 $INITIATOR_PID 2>/dev/null; then :
   else :
     echo "ERROR: initiator not running."
-    FAIL=1
+    ((FAIL++))
   fi
 }  # start_caps
 
@@ -29,26 +29,26 @@ check_exits() {
   if kill -0 $LISTENER_PID 2>/dev/null; then
     echo "ERROR: Listener still running."
     kill $LISTENER_PID 2>/dev/null
-    FAIL=1
+    ((FAIL++))
   else
     wait $LISTENER_PID
     RC=$?
     if [ $RC -ne 0 ]; then
       echo "FAIL: listener exited with status $RC"
-      FAIL=1
+      ((FAIL++))
     fi
   fi
 
   if kill -0 $INITIATOR_PID 2>/dev/null; then
     echo "ERROR: Initiator still running."
     kill $INITIATOR_PID 2>/dev/null
-    FAIL=1
+    ((FAIL++))
   else
     wait $INITIATOR_PID
     RC=$?
     if [ $RC -ne 0 ]; then
       echo "FAIL: Initiator exited with status $RC"
-      FAIL=1
+      ((FAIL++))
     fi
   fi
 }  # check_exits
@@ -140,12 +140,12 @@ __EOF__
 
   if [ "$CAP1_COUNT" -eq 0 ]; then
     echo "FAIL: No capture files in capdir1."
-    FAIL=1
+    ((FAIL++))
   fi
 
   if [ "$CAP2_COUNT" -eq 0 ]; then
     echo "FAIL: No capture files in capdir2."
-    FAIL=1
+    ((FAIL++))
   fi
 
   # Verify tshark processes are gone.
@@ -153,13 +153,13 @@ __EOF__
   if pgrep -f "capdir1/cap.pcapng" >/dev/null 2>&1; then
     echo "FAIL: tshark for capdir1 still running."
     pkill -f "capdir1/cap.pcapng" 2>/dev/null
-    FAIL=1
+    ((FAIL++))
   fi
 
   if pgrep -f "capdir2/cap.pcapng" >/dev/null 2>&1; then
     echo "FAIL: tshark for capdir2 still running."
     pkill -f "capdir2/cap.pcapng" 2>/dev/null
-    FAIL=1
+    ((FAIL++))
   fi
 else
   echo "FYI: tshark not found; skipping cap_cmd test."
@@ -170,7 +170,7 @@ fi
 cat >listener.cfg <<__EOF__
 listen_port=9877
 mon_file=logfile1.log
-mon_pattern=.*ERROR.*
+mon_pattern=ERROR
 __EOF__
 
 cat >initiator.cfg <<__EOF__
@@ -191,13 +191,13 @@ sleep 1
 if kill -0 $LISTENER_PID 2>/dev/null; then :
 else
   echo "FAIL: listener triggered on non-matching line."
-  FAIL=1
+  ((FAIL++))
 fi
 
 if kill -0 $INITIATOR_PID 2>/dev/null; then :
 else
   echo "FAIL: initiator triggered on non-matching line."
-  FAIL=1
+  ((FAIL++))
 fi
 
 # Now write a matching line.  Should trigger.
@@ -217,7 +217,7 @@ sleep 1
 if kill -0 $LISTENER_PID 2>/dev/null; then :
 else
   echo "FAIL: listener triggered on non-matching line (test 5)."
-  FAIL=1
+  ((FAIL++))
 fi
 
 echo "ERROR: initiator saw it" >> logfile2.log
@@ -226,4 +226,9 @@ sleep 0.5
 
 check_exits
 
-exit $FAIL
+if [ "$FAIL" -gt 0 ]; then :
+  echo "ERROR, $FAIL tests failed"
+  exit 1
+else :
+  echo "All tests passed"
+fi
