@@ -13,4 +13,4 @@ done
 
 rm -f dual_cap
 
-gcc -Wall -g -o dual_cap -pthread dual_cap.c plat_unix.c;  if [ $? -ne 0 ]; then exit 1; fi
+gcc -Wall -g -o dual_cap -pthread dual_cap.c re.c plat_unix.c;  if [ $? -ne 0 ]; then exit 1; fi

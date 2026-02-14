@@ -11,16 +11,16 @@ it can be repurposes for non-packet capturing uses. See [Other Uses](#other-uses
 
 Thanks to Claude.ai for assistance in writing this tool;
 we make a great team! I hereby certify that I have carefully
-reviewed all of Claude's contributions. Any bugs in this code are the
-kinds of bugs that I might write.
+reviewed and tested all of Claude's contributions.
 
 <!-- mdtoc-start -->
 &bull; [dual_cap](#dual_cap)  
 &nbsp;&nbsp;&nbsp;&nbsp;&bull; [Overview](#overview)  
 &nbsp;&nbsp;&nbsp;&nbsp;&bull; [Building](#building)  
 &nbsp;&nbsp;&nbsp;&nbsp;&bull; [Usage](#usage)  
+&nbsp;&nbsp;&nbsp;&nbsp;&bull; [Configuration File](#configuration-file)  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&bull; [Config Keys](#config-keys)  
-&nbsp;&nbsp;&nbsp;&nbsp;&bull; [Pattern Matching](#pattern-matching)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&bull; [Pattern Matching](#pattern-matching)  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&bull; [Example Config Files](#example-config-files)  
 &nbsp;&nbsp;&nbsp;&nbsp;&bull; [Other Uses](#other-uses)  
 &nbsp;&nbsp;&nbsp;&nbsp;&bull; [File Structure](#file-structure)  
@@ -30,6 +30,7 @@ kinds of bugs that I might write.
 &nbsp;&nbsp;&nbsp;&nbsp;&bull; [Error Handling](#error-handling)  
 &nbsp;&nbsp;&nbsp;&nbsp;&bull; [Known Limitations](#known-limitations)  
 &nbsp;&nbsp;&nbsp;&nbsp;&bull; [Testing](#testing)  
+&nbsp;&nbsp;&nbsp;&nbsp;&bull; [License](#license)  
 <!-- TOC created by '../mdtoc/mdtoc.pl ./README.md' (see https://github.com/fordsfords/mdtoc) -->
 <!-- mdtoc-end -->
 
@@ -80,7 +81,7 @@ Unknown keys are rejected.
 | `init_port` | integer | Remote listener port (initiator only) |
 | `listen_port` | integer | Port to listen on (listener only) |
 | `mon_file` | file path | Log file to monitor for new output |
-| `mon_pattern` | glob pattern | Only trigger on lines matching this pattern (optional) |
+| `mon_pattern` | simplified reg expr | Only trigger on lines matching this pattern (optional) |
 | `cap_cmd` | command line | Capture command to run in background (optional) |
 | `cap_linger_ms` | integer | Milliseconds to keep capturing after trigger (optional, default 0) |
 
@@ -98,22 +99,15 @@ Rules:
 
 ### Pattern Matching
 
-The `mon_pattern` config key uses simplified glob-style matching against
-each new line in the monitored file.  Supported wildcards:
+The `mon_pattern` config key uses simplified regular expression matching against
+each new line in the monitored file.
 
-- `*` matches zero or more characters.
-- `?` matches exactly one character.
-
-The pattern is matched against the entire line (with the trailing
-newline stripped).  To match a substring anywhere in the line, wrap
-the pattern with `*` on both ends, e.g. `*ERROR*`.
+See [re documentation](https://github.com/fordsfords/re) for details on the regular expression syntax and capabilities.
 
 Examples:
 
-    mon_pattern=*ERROR*             matches any line containing "ERROR"
-    mon_pattern=*ERROR*timeout*     matches lines with both "ERROR" and "timeout"
-    mon_pattern=FATAL:*             matches lines starting with "FATAL:"
-    mon_pattern=*disk?full*         matches "disk full", "disk\tfull", etc.
+    mon_pattern=ERROR             matches any line containing "ERROR"
+    mon_pattern=^ERROR.*timeout   matches lines starting with "ERROR" followd by "timeout"
 
 ### Example Config Files
 
@@ -121,7 +115,7 @@ Listener config (`listener.cfg`):
 
     listen_port=9877
     mon_file=/var/log/myapp.log
-    mon_pattern=*ERROR*
+    mon_pattern=^ERROR
     cap_cmd=tshark -i eth0 -w /tmp/caps/listener.pcapng -b filesize:10240 -b files:5 -q
     cap_linger_ms=1000
 
@@ -130,7 +124,7 @@ Initiator config (`initiator.cfg`):
     init_ip=192.168.1.10
     init_port=9877
     mon_file=/var/log/myapp.log
-    mon_pattern=*ERROR*
+    mon_pattern=^ERROR
     cap_cmd=tshark -i eth0 -w /tmp/caps/initiator.pcapng -b filesize:10240 -b files:5 -q
     cap_linger_ms=1000
 
@@ -149,6 +143,8 @@ send an email or text message to alert a user.
 |---|---|
 | `dual_cap.c` | Application: config parsing, file monitoring thread, peer communication thread, main |
 | `plat.h` | Platform abstraction: typedefs, function declarations, platform-specific headers |
+| `re.c` | regular expression engine from https://github.com/fordsfords/re |
+| `re.h` | regular expression engine from https://github.com/fordsfords/re |
 | `plat_unix.c` | Unix implementations of platform functions |
 | `plat_win.c` | Windows implementations of platform functions |
 | `bld.sh` | Unix build |
@@ -214,12 +210,12 @@ The intent is minimal clutter, not user-friendly diagnostics.
 
 ## Known Limitations
 
-- Ideally the log file pattern matcher would be a full regular expression.
-  If needed, could include https://github.com/kokke/tiny-regex-c
-- `volatile int exiting` is used for cross-thread signaling. This works
+* Ideally the log file pattern matcher would be a full regular expression.
+  If needed, could replace `re` with [PCRE](https://www.pcre.org/).
+* `volatile int exiting` is used for cross-thread signaling. This works
   on x86/x64 but is not formally correct per the C11 memory model.
   `_Atomic int` would be the proper alternative.
-- On Windows, `TerminateProcess` is used to stop the capture command.
+* On Windows, `TerminateProcess` is used to stop the capture command.
   This is a hard kill; the currently-writing capture file may be
   truncated.  Use ring-buffer mode (`-b filesize:... -b files:...`)
   to limit exposure.
@@ -228,3 +224,17 @@ The intent is minimal clutter, not user-friendly diagnostics.
 ## Testing
 
     ./tst.sh
+
+
+## License
+
+I want there to be NO barriers to using this code, so I am releasing it to the public domain.  But "public domain" does not have an internationally agreed upon definition, so I use CC0:
+
+This work is dedicated to the public domain under CC0 1.0 Universal:
+http://creativecommons.org/publicdomain/zero/1.0/
+
+To the extent possible under law, Steven Ford has waived all copyright
+and related or neighboring rights to this work. In other words, you can 
+use this code for any purpose without any restrictions.
+This work is published from: United States.
+Project home: https://github.com/fordsfords/dual_cap

@@ -1,43 +1,14 @@
 /* dual_cap.c - Coordinated dual packet capture. */
 
 #include "plat.h"
+#include "re.h"
 
-#define E(assrt_expr_) do { \
-  if (assrt_expr_) { \
-    fprintf(stderr, "ERROR [%s:%d]: '%s'\n", __FILE__, __LINE__, #assrt_expr_); \
+#define E(e_expr_) do { \
+  if (e_expr_) { \
+    fprintf(stderr, "ERROR [%s:%d]: '%s'\n", __FILE__, __LINE__, #e_expr_); \
     exit(1); \
   } \
 } while (0)
-
-
-/* glob_match - match a string against a simplified glob pattern.
- * Supports '*' (zero or more characters) and '?' (exactly one character).
- * Returns 1 on match, 0 on no match. */
-int glob_match(const char *pattern, const char *str) {
-  while (*pattern) {
-    if (*pattern == '*') {
-      /* Skip consecutive stars. */
-      while (*pattern == '*') { pattern++; }
-      /* Trailing star matches everything. */
-      if (*pattern == '\0') { return 1; }
-      /* Try matching the rest of the pattern at every position. */
-      while (*str) {
-        if (glob_match(pattern, str)) { return 1; }
-        str++;
-      }
-      return glob_match(pattern, str);  /* Both exhausted? */
-    } else if (*pattern == '?') {
-      if (*str == '\0') { return 0; }
-      pattern++;
-      str++;
-    } else {
-      if (*str != *pattern) { return 0; }
-      pattern++;
-      str++;
-    }
-  }
-  return *str == '\0';
-}  /* glob_match */
 
 
 /* Config globals. */
@@ -47,7 +18,7 @@ int cfg_listen_port = 0;
 char *cfg_mon_file = NULL;
 char *cfg_cap_cmd = NULL;
 int cfg_cap_linger_ms = 0;
-char *cfg_mon_pattern = NULL;
+re_t *cfg_mon_pattern = NULL;  /* Regular expression compiled pattern. */
 
 /* Initialized by main, used by threads. */
 plat_sock_t peer_sock;
@@ -62,7 +33,7 @@ volatile int exiting = 0;
 
 void cfg_parse(char *cfg_file_name) {
   char line[512];
-  char *eq, *key, *val, *nl;
+  char *eq, *key, *val_str, *nl;
   int has_init_ip = 0;
   int has_init_port = 0;
   int has_listen_port = 0;
@@ -81,25 +52,25 @@ void cfg_parse(char *cfg_file_name) {
     eq = strchr(line, '=');  E(eq == NULL);
     *eq = '\0';
     key = line;
-    val = eq + 1;
+    val_str = eq + 1;
 
     if (strcmp(key, "init_ip") == 0) {
-      rc = inet_pton(AF_INET, val, &cfg_init_ip);  E(rc != 1);
+      rc = inet_pton(AF_INET, val_str, &cfg_init_ip);  E(rc != 1);
       has_init_ip = 1;
     } else if (strcmp(key, "init_port") == 0) {
-      cfg_init_port = atoi(val);  E(cfg_init_port <= 0);
+      cfg_init_port = atoi(val_str);  E(cfg_init_port <= 0);
       has_init_port = 1;
     } else if (strcmp(key, "listen_port") == 0) {
-      cfg_listen_port = atoi(val);  E(cfg_listen_port <= 0);
+      cfg_listen_port = atoi(val_str);  E(cfg_listen_port <= 0);
       has_listen_port = 1;
     } else if (strcmp(key, "mon_file") == 0) {
-      cfg_mon_file = strdup(val);  E(cfg_mon_file == NULL);
+      cfg_mon_file = strdup(val_str);  E(cfg_mon_file == NULL);
     } else if (strcmp(key, "cap_cmd") == 0) {
-      cfg_cap_cmd = strdup(val);  E(cfg_cap_cmd == NULL);
+      cfg_cap_cmd = strdup(val_str);  E(cfg_cap_cmd == NULL);
     } else if (strcmp(key, "cap_linger_ms") == 0) {
-      cfg_cap_linger_ms = atoi(val);  E(cfg_cap_linger_ms < 0);
+      cfg_cap_linger_ms = atoi(val_str);  E(cfg_cap_linger_ms < 0);
     } else if (strcmp(key, "mon_pattern") == 0) {
-      cfg_mon_pattern = strdup(val);  E(cfg_mon_pattern == NULL);
+      cfg_mon_pattern = re_compile(val_str);  E(cfg_mon_pattern == NULL);
     } else {
       fprintf(stderr, "ERROR: unknown key '%s'\n", key);
       exit(1);
@@ -171,7 +142,7 @@ void *file_mon_thread(void *arg) {
       /* Strip trailing newline for pattern matching. */
       nl = strchr(line, '\n');
       if (nl) { *nl = '\0'; }
-      if (cfg_mon_pattern == NULL || glob_match(cfg_mon_pattern, line)) {
+      if (cfg_mon_pattern == NULL || re_match(cfg_mon_pattern, line, NULL, NULL)) {
         exiting = 1;
       }
     } else {
@@ -253,6 +224,5 @@ int main(int argc, char **argv) {
 
   free(cfg_cap_cmd);
   free(cfg_mon_file);
-  free(cfg_mon_pattern);
   return 0;
 }  /* main */

@@ -170,14 +170,14 @@ fi
 cat >listener.cfg <<__EOF__
 listen_port=9877
 mon_file=logfile1.log
-mon_pattern=*ERROR*
+mon_pattern=.*ERROR.*
 __EOF__
 
 cat >initiator.cfg <<__EOF__
 init_ip=127.0.0.1
 init_port=9877
 mon_file=logfile2.log
-mon_pattern=*ERROR*
+mon_pattern=ERROR
 __EOF__
 
 start_caps
