@@ -12,9 +12,9 @@ timeout /t 1 /nobreak >nul
 
 start msend 224.9.9.9 12000 15 127.0.0.1 >msend.log
 
-start dual_cap listener.cfg.tst2
+start dual_cap listener.cfg.tst
 timeout /t 1 /nobreak >nul
-start dual_cap initiator.cfg.tst2
+start dual_cap initiator.cfg.tst
 
 timeout /t 13 /nobreak >nul
 
