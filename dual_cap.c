@@ -145,14 +145,16 @@ FILE *mon_open(void) {
 
 void *file_mon_thread(void *arg) {
   char line[512];
-  char *nl;
   (void)arg;
 
   while (!exiting) {
     if (fgets(line, sizeof(line), mon_fp) != NULL) {
-      /* Strip trailing newline for pattern matching. */
-      nl = strchr(line, '\n');
-      if (nl) { *nl = '\0'; }
+      /* Strip trailing cr/nl for pattern matching. */
+      size_t line_len = strlen(line);
+      while (line_len > 0 && (line[line_len - 1] == '\n' || line [line_len - 1] == '\r')) {
+        line_len --;
+        line[line_len] = '\0';
+      }
       if (cfg_mon_pattern == NULL || re_match(cfg_mon_pattern, line, NULL, NULL)) {
         exiting = 1;
       }

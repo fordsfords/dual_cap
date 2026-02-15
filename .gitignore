@@ -18,7 +18,6 @@ capdir[12]
 # Executable
 a.out
 dual_cap
-test_logger
 core.*
 
 # Prerequisites
