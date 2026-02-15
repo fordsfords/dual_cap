@@ -29,6 +29,7 @@ int cfg_listen_port = 0;
 char *cfg_mon_file = NULL;
 char *cfg_cap_cmd = NULL;
 int cfg_cap_linger_ms = 0;
+char *cfg_mon_pat_str = NULL;  /* Regular expression compiled pattern. */
 re_t *cfg_mon_pattern = NULL;  /* Regular expression compiled pattern. */
 
 /* Initialized by main, used by threads. */
@@ -81,7 +82,8 @@ void cfg_parse(char *cfg_file_name) {
     } else if (strcmp(key, "cap_linger_ms") == 0) {
       cfg_cap_linger_ms = atoi(val_str);  E(cfg_cap_linger_ms < 0);
     } else if (strcmp(key, "mon_pattern") == 0) {
-      cfg_mon_pattern = re_compile(val_str);  E(cfg_mon_pattern == NULL);
+      cfg_mon_pat_str = strdup(val_str);  E(cfg_mon_pat_str == NULL);
+      cfg_mon_pattern = re_compile(cfg_mon_pat_str);  E(cfg_mon_pattern == NULL);
     } else {
       fprintf(stderr, "ERROR: unknown key '%s'\n", key);
       exit(1);
@@ -144,7 +146,7 @@ FILE *mon_open(void) {
 
 
 void *file_mon_thread(void *arg) {
-  char line[512];
+  char line[2048];
   (void)arg;
 
   while (!exiting) {
@@ -235,7 +237,10 @@ int main(int argc, char **argv) {
     plat_wait_proc(cap_proc);
   }
 
-  free(cfg_cap_cmd);
-  free(cfg_mon_file);
+  if (cfg_mon_pattern) re_free(cfg_mon_pattern);
+  if (cfg_cap_cmd) free(cfg_cap_cmd);
+  if (cfg_mon_file) free(cfg_mon_file);
+  if (cfg_mon_pat_str ) free(cfg_mon_pat_str);
+
   return 0;
 }  /* main */
