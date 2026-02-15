@@ -2,6 +2,10 @@ rem tst.bat
 
 call bld.bat
 
+del /Q capdir1\*.*
+del /Q capdir2\*.*
+del /Q *.log
+
 start mdump -o mdump.log 224.9.9.9 12000 127.0.0.1
 
 timeout /t 1 /nobreak >nul
