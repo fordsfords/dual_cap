@@ -13,7 +13,7 @@ start dual_cap listener.cfg.tst2
 timeout /t 1 /nobreak >nul
 start dual_cap initiator.cfg.tst2
 
-timeout /t 10 /nobreak >nul
+timeout /t 13 /nobreak >nul
 
 taskkill /IM mdump.exe /F
 
