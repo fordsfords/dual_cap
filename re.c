@@ -48,7 +48,7 @@ static int ismetachar(char c);
 
 re_t *re_compile(const char* pattern)
 {
-  int max_regexp_objects = strlen(pattern) + 1;
+  int max_regexp_objects = (int)strlen(pattern) + 1;
   re_t *re = (re_t *)calloc(1, sizeof(re_t));  E(re == NULL);
   regex_t *re_compiled = (regex_t *)calloc(max_regexp_objects, sizeof(regex_t));
   re->max_regexp_objects = max_regexp_objects;

@@ -11,6 +11,6 @@ for F in $MD_FILES; do :
   fi
 done
 
-rm -f dual_cap
+rm -f dual_cap test_logger
 
 gcc -Wall -g -o dual_cap -pthread dual_cap.c re.c plat_unix.c;  if [ $? -ne 0 ]; then exit 1; fi

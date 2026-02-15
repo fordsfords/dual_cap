@@ -1,0 +1,4 @@
+init_ip=127.0.0.1
+init_port=9877
+mon_file=mdump.log
+mon_pattern=Message 10$

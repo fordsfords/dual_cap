@@ -1,0 +1,3 @@
+listen_port=9877
+mon_file=msend.log
+mon_pattern=ERROR
