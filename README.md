@@ -7,7 +7,7 @@ data capture command (e.g. `tshark`) in the background, which is
 stopped shortly after the trigger fires.
 
 While this tool was originally written to be used with packet capture,
-it can be repurposes for non-packet capturing uses. See [Other Uses](#other-uses).
+it can be repurposed for non-packet capturing uses. See [Other Uses](#other-uses).
 
 Thanks to Claude.ai for assistance in writing this tool;
 we make a great team! I hereby certify that I have carefully
@@ -63,7 +63,7 @@ Unix:
 
     ./dual_cap <config_file>
 
-Windows: compile `dual_cap.c` and `plat_win.c` together, linking
+Windows:
 
     dual_cap <config_file>
 
@@ -149,16 +149,25 @@ send an email or text message to alert a user.
 | `plat_win.c` | Windows implementations of platform functions |
 | `bld.sh` | Unix build |
 | `tst.sh` | Basic integration test (Unix) |
+| `tst.bat` | Basic integration test (Windows) |
 | `clean.sh` | Remove test files (Unix) |
 
 ## Platform Notes
 
 The code is written to be portable between Unix and Windows. Platform
-differences are isolated in `plat_unix.c` and `plat_win.c`, with one
-exception: `SIGPIPE` is ignored on Unix in `main()` via an `#ifdef`
-block, since Windows does not generate `SIGPIPE` for sockets.
+differences are isolated in `plat_unix.c` and `plat_win.c`. Each
+platform file also provides a Ctrl+C / SIGINT handler that kills the
+capture subprocess before exiting, preventing orphaned capture processes.
 
 ### Windows-Specific Concerns
+
+**Loopback capture.** Windows does not natively support capturing
+loopback traffic. Npcap (installed with modern Wireshark) provides a
+virtual interface for this purpose. Use `-i \Device\NPF_Loopback` in
+the `cap_cmd` to capture traffic on 127.0.0.1. The loopback adapter
+is purely a capture tap — applications still send and receive on
+127.0.0.1 normally. Run `tshark -D` to verify the interface is
+available.
 
 **File monitoring.** Some Windows C runtimes cache file metadata after
 hitting EOF, causing the tail-f pattern (`clearerr` + `fgets`) to miss
@@ -195,9 +204,11 @@ Recommended `tshark` options for long-running captures:
 
 **Shutdown behavior.** On Unix, the capture process group receives
 `SIGTERM`, which causes `tshark` and `dumpcap` to flush and exit
-cleanly.  On Windows, `TerminateProcess` is used (a hard kill).  With
-ring-buffer files, only the currently-writing file may be truncated;
-already-rotated files are intact on disk.
+cleanly.  On Windows, the capture process group receives a
+`CTRL_BREAK_EVENT` (via `GenerateConsoleCtrlEvent`), which also
+triggers a graceful shutdown with buffer flushing.  If the capture
+process does not exit within 10 seconds, `TerminateProcess` is used
+as a last resort (with a warning to stderr).
 
 
 ## Error Handling
@@ -215,16 +226,26 @@ The intent is minimal clutter, not user-friendly diagnostics.
 * `volatile int exiting` is used for cross-thread signaling. This works
   on x86/x64 but is not formally correct per the C11 memory model.
   `_Atomic int` would be the proper alternative.
-* On Windows, `TerminateProcess` is used to stop the capture command.
-  This is a hard kill; the currently-writing capture file may be
-  truncated.  Use ring-buffer mode (`-b filesize:... -b files:...`)
-  to limit exposure.
+* On Windows, if the capture process does not respond to `CTRL_BREAK`
+  within 10 seconds, `TerminateProcess` is used as a fallback. This is
+  a hard kill; the currently-writing capture file may be truncated.
+  Use ring-buffer mode (`-b filesize:... -b files:...`) to limit
+  exposure. In practice, tshark responds to `CTRL_BREAK` promptly.
 
 
-## Testing
+## Building / Testing
+
+Test Unix (includes build):
 
     ./tst.sh
 
+Test Windows (includes build):
+
+    tst.bat
+
+Note that the Unix test is more thorough.
+I use WSL2 Ubuntu on a Windows laptop with Visual Studio build tools installed (not full Visual Studio).
+So I do my Windows work with the VS command tool.
 
 ## License
 
