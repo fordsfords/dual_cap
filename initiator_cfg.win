@@ -1,6 +1,0 @@
-init_ip=127.0.0.1
-init_port=9877
-mon_file=mdump.log
-mon_pattern=Message a\s*$
-cap_cmd=tshark -i \Device\NPF_Loopback -w capdir2\cap.pcapng -b filesize:100 -b files:3 -q
-cap_linger_ms=500

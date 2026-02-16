@@ -29,7 +29,7 @@ reviewed and tested all of Claude's contributions.
 &nbsp;&nbsp;&nbsp;&nbsp;&bull; [Capture Integration](#capture-integration)  
 &nbsp;&nbsp;&nbsp;&nbsp;&bull; [Error Handling](#error-handling)  
 &nbsp;&nbsp;&nbsp;&nbsp;&bull; [Known Limitations](#known-limitations)  
-&nbsp;&nbsp;&nbsp;&nbsp;&bull; [Testing](#testing)  
+&nbsp;&nbsp;&nbsp;&nbsp;&bull; [Building / Testing](#building--testing)  
 &nbsp;&nbsp;&nbsp;&nbsp;&bull; [License](#license)  
 <!-- TOC created by '../mdtoc/mdtoc.pl ./README.md' (see https://github.com/fordsfords/mdtoc) -->
 <!-- mdtoc-end -->
