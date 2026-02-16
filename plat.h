@@ -19,9 +19,11 @@
 #include <ws2tcpip.h>
 typedef SOCKET plat_sock_t;
 typedef HANDLE plat_thread_t;
-typedef HANDLE plat_proc_t;
+typedef struct {
+  HANDLE hProcess;
+  DWORD  dwProcessId;
+} plat_proc_t;
 #define PLAT_INVALID_SOCK INVALID_SOCKET
-#define PLAT_INVALID_PROC NULL
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -37,7 +39,6 @@ typedef int plat_sock_t;
 typedef pthread_t plat_thread_t;
 typedef pid_t plat_proc_t;
 #define PLAT_INVALID_SOCK (-1)
-#define PLAT_INVALID_PROC (-1)
 #endif
 
 #include <stdio.h>
@@ -55,5 +56,6 @@ int plat_close_sock(plat_sock_t sock);
 int plat_spawn_cmd(const char *cmd, plat_proc_t *proc);
 int plat_kill_proc(plat_proc_t proc);
 int plat_wait_proc(plat_proc_t proc);
+void plat_install_ctrl_handler(plat_proc_t *proc_ptr, int *running_ptr);
 
 #endif  /* PLAT_H */

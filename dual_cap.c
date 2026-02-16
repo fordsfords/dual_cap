@@ -203,10 +203,6 @@ int main(int argc, char **argv) {
 
   E(argc != 2);
 
-#ifndef _WIN32
-  signal(SIGPIPE, SIG_IGN);
-#endif
-
   E(plat_init());
   cfg_parse(argv[1]);
 
@@ -215,6 +211,7 @@ int main(int argc, char **argv) {
   if (cfg_cap_cmd != NULL) {
     E(plat_spawn_cmd(cfg_cap_cmd, &cap_proc));
     cap_running = 1;
+    plat_install_ctrl_handler(&cap_proc, &cap_running);
   }
 
   /* Establish connection before opening log file, so that both

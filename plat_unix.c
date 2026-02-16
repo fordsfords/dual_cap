@@ -13,9 +13,23 @@
 
 #include "plat.h"
 
+/* Ctrl handler state: set by plat_install_ctrl_handler. */
+static plat_proc_t *s_proc_ptr = NULL;
+static int *s_running_ptr = NULL;
+
+
+static void sigint_handler(int sig) {
+  (void)sig;
+  if (s_running_ptr && *s_running_ptr && s_proc_ptr) {
+    kill(-(*s_proc_ptr), SIGTERM);
+  }
+  _exit(1);
+}  /* sigint_handler */
+
 
 int plat_init(void) {
-  return 0;  /* No-op on Unix. */
+  signal(SIGPIPE, SIG_IGN);
+  return 0;
 }  /* plat_init */
 
 
@@ -69,3 +83,10 @@ int plat_wait_proc(plat_proc_t proc) {
   if (waitpid(proc, &status, 0) < 0) { return -1; }
   return 0;
 }  /* plat_wait_proc */
+
+
+void plat_install_ctrl_handler(plat_proc_t *proc_ptr, int *running_ptr) {
+  s_proc_ptr = proc_ptr;
+  s_running_ptr = running_ptr;
+  signal(SIGINT, sigint_handler);
+}  /* plat_install_ctrl_handler */
