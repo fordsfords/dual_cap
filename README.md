@@ -45,6 +45,8 @@ instance over the TCP connection, and both exit.
 Typical deployment: start the listener first, then the initiator.
 The listener blocks until the initiator connects.
 
+It's written in C because that's the language I'm most proficient in.
+
 
 ## Building
 
@@ -52,10 +54,9 @@ Unix (including WSL2):
 
     ./bld.sh
 
-Windows: compile `dual_cap.c` and `plat_win.c` together, linking
-against `ws2_32.lib`. For MSVC:
+Windows:
 
-    cl /std:c11 /W4 /O2 /MT /nologo dual_cap.c plat_win.c ws2_32.lib /Fe:dual_cap.exe
+    bld.bat
 
 ## Usage
 

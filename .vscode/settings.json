@@ -15,13 +15,15 @@
         "MSVC",
         "myapp",
         "nologo",
+        "Npcap",
         "PCRE",
         "pkill",
         "REUSEADDR",
         "rfds",
         "SIGPIPE",
         "tcpdump",
-        "tshark"
+        "tshark",
+        "Wireshark"
     ],
     "vim.scrolloff": 0,
     "C_Cpp.codeAnalysis.clangTidy.checks.disabled": [
