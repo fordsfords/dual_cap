@@ -42,9 +42,10 @@ static BOOL WINAPI ctrl_handler(DWORD type) {
       TerminateProcess(s_proc_ptr->hProcess, 1);
     }
     ExitProcess(1);
-    return TRUE;
+    /* Normally, if consuming the event, do a "return TRUE".
+     * But ExitProcess(1) never returns, so this is unreachable. */
   }
-  return FALSE;
+  return FALSE;  /* Not my event, don't consume it. */
 }  /* ctrl_handler */
 
 
